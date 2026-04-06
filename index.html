@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Steel Heat Treatment Simulator</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d0f12;--bg2:#131619;--bg3:#1a1e23;--bg4:#22272e;
+  --bd:#252a32;--bd2:#353c47;
+  --tx:#e2e8f0;--tx2:#8a95a3;--tx3:#3d4553;
+  --acc:#e8a832;--grn:#4aae6a;--red:#da5a4a;--pur:#9a6ada;--blu:#4a9eda;
+  --f:'IBM Plex Sans',sans-serif;--m:'IBM Plex Mono',monospace;
+}
+body{background:var(--bg);color:var(--tx);font-family:var(--f);font-size:12px;margin:0;padding:0;min-height:100vh;}
+.wrap{display:flex;flex-direction:column;width:100%;}
+
+/* ── CONTROLS BAR ── */
+.ctrl{background:var(--bg2);border-bottom:1px solid var(--bd);padding:8px 10px;display:flex;gap:7px;flex-wrap:wrap;align-items:flex-start;}
+.cg{background:var(--bg3);border:1px solid var(--bd);border-radius:5px;padding:7px 9px;display:flex;flex-direction:column;gap:4px;}
+.cg.w{flex:1;min-width:150px;}
+.cl{font-family:var(--m);font-size:9px;color:var(--tx3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px;display:flex;align-items:center;gap:4px;}
+.cr{display:flex;gap:4px;flex-wrap:wrap;}
+.chip{padding:4px 9px;border:1px solid var(--bd);border-radius:4px;background:transparent;color:var(--tx2);font-size:11px;font-family:var(--f);cursor:pointer;transition:.12s;white-space:nowrap;}
+.chip:hover{border-color:var(--bd2);color:var(--tx);}
+.chip.on{background:rgba(232,168,50,.12);border-color:var(--acc);color:var(--acc);}
+.chip .cs{font-size:9px;color:var(--tx3);display:block;font-family:var(--m);}
+.chip.on .cs{color:rgba(232,168,50,.55);}
+.sr{display:flex;align-items:center;gap:6px;}
+.sr label{font-size:10px;color:var(--tx2);white-space:nowrap;min-width:34px;}
+.sr input[type=range]{flex:1;accent-color:var(--acc);min-width:60px;}
+.sv{font-family:var(--m);font-size:10px;color:var(--acc);min-width:54px;text-align:right;}
+.nr{display:flex;align-items:center;gap:5px;}
+.nr label{font-size:10px;color:var(--tx2);min-width:34px;}
+.nr input[type=number]{width:54px;background:var(--bg4);border:1px solid var(--bd2);border-radius:3px;color:var(--tx);font-family:var(--m);font-size:10px;padding:3px 5px;-moz-appearance:textfield;}
+.nr input::-webkit-outer-spin-button,.nr input::-webkit-inner-spin-button{-webkit-appearance:none;}
+.unit{font-size:9px;color:var(--tx3);font-family:var(--m);}
+.hint{font-size:9px;color:var(--tx3);font-family:var(--m);}
+.ib{width:15px;height:15px;border-radius:50%;border:1px solid var(--bd2);background:transparent;color:var(--tx3);font-size:9px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;transition:.12s;flex-shrink:0;}
+.ib:hover{border-color:var(--acc);color:var(--acc);}
+.rb{padding:6px 14px;background:var(--acc);border:none;border-radius:4px;color:#000;font-family:var(--m);font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap;align-self:flex-end;}
+.rb:hover{background:#c8881a;}
+
+/* ── DIAGRAM PANELS ── */
+.diags{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd);height:310px;}
+.panel{background:var(--bg);padding:8px;position:relative;overflow:hidden;}
+.pt{font-family:var(--m);font-size:9px;color:var(--tx3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;}
+.bot{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd);height:215px;}
+.tip{position:absolute;background:var(--bg4);border:1px solid var(--bd2);border-radius:4px;padding:6px 9px;font-family:var(--m);font-size:9px;color:var(--tx);pointer-events:none;z-index:20;display:none;line-height:1.7;max-width:215px;}
+
+/* ── STATUS BAR ── */
+.stbar{background:var(--bg2);border-top:1px solid var(--bd);padding:4px 10px;display:flex;gap:12px;font-family:var(--m);font-size:9px;color:var(--tx3);flex-wrap:wrap;}
+.stbar span{color:var(--tx2);}
+
+/* ── PROPERTIES ── */
+.pb{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
+.pn{font-size:10px;color:var(--tx2);width:62px;flex-shrink:0;}
+.pbg{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;}
+.pf{height:100%;border-radius:2px;transition:width .5s ease;}
+.pv{font-family:var(--m);font-size:9px;color:var(--tx3);width:46px;text-align:right;}
+
+/* ── MODAL ── */
+.mw{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:40;align-items:center;justify-content:center;}
+.mw.show{display:flex;}
+.md{background:var(--bg3);border:1px solid var(--bd2);border-radius:6px;padding:14px 16px;max-width:320px;width:90%;margin:20px;}
+.mt{font-family:var(--m);font-size:10px;color:var(--acc);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
+.mb{font-size:11px;color:var(--tx2);line-height:1.65;}
+.mb b{color:var(--tx);}
+.mc{margin-top:10px;padding:5px 12px;background:transparent;border:1px solid var(--bd2);border-radius:3px;color:var(--tx2);font-family:var(--m);font-size:10px;cursor:pointer;display:block;}
+.mc:hover{border-color:var(--acc);color:var(--acc);}
+</style>
+</head>
+<body>
+<div class="wrap" id="appWrap">
+
+<!-- ══════════════════════════════════════════════════════════
+     CONTROLS BAR
+     ══════════════════════════════════════════════════════════ -->
+<div class="ctrl">
+  <div class="cg">
+    <div class="cl">Carbon %</div>
+    <input type="range" id="cSl" min="2" max="140" value="40" step="1"
+           style="width:120px;accent-color:var(--acc);" oninput="onC(this.value)">
+    <div style="font-family:var(--m);font-size:10px;color:var(--acc);text-align:center;min-width:120px;" id="cLbl">
+      0.40% C — Medium
+    </div>
+  </div>
+
+  <div class="cg">
+    <div class="cl">Heat treatment</div>
+    <div class="cr">
+      <button class="chip" id="ht-anneal" onclick="setHT('anneal')">
+        Annealing<span class="cs">0–20°C/s → coarse pearlite + hold</span>
+      </button>
+      <button class="chip on" id="ht-norm" onclick="setHT('norm')">
+        Normalizing<span class="cs">20–80°C/s → fine pearlite</span>
+      </button>
+      <button class="chip" id="ht-qt" onclick="setHT('qt')">
+        Quench+Temper<span class="cs">>80°C/s → martensite</span>
+      </button>
+      <button class="chip" id="ht-sph" onclick="setHT('sph')">
+        Spheroidizing<span class="cs">cyclic near A₁</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="cg">
+    <div class="cl">Diagram</div>
+    <div class="cr">
+      <button class="chip on" id="dt-ttt" onclick="setDT('ttt')">TTT</button>
+      <button class="chip" id="dt-cct" onclick="setDT('cct')">CCT</button>
+    </div>
+  </div>
+
+  <div class="cg w">
+    <div class="cl">Cooling rate <button class="ib" onclick="openMod('rate')">i</button></div>
+    <div class="sr">
+      <label>°C/s</label>
+      <input type="range" id="rateSl" min="1" max="200" value="20" step="1" oninput="onRate(this.value)">
+      <span class="sv" id="rateV">20°C/s</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--tx3);font-family:var(--m);">
+      <span>Furnace 1</span><span>Air 20</span><span>Oil 80</span><span>Water 200</span>
+    </div>
+  </div>
+
+  <div class="cg w">
+    <div class="cl">Temper temp (Q+T) <button class="ib" onclick="openMod('temper')">i</button></div>
+    <div class="sr">
+      <label>°C</label>
+      <input type="range" id="temSl" min="150" max="650" value="400" step="10" oninput="onTemper(this.value)">
+      <span class="sv" id="temV">400°C</span>
+    </div>
+  </div>
+
+  <div class="cg">
+    <div class="cl">End temp <button class="ib" onclick="openMod('trange')">i</button></div>
+    <div class="nr">
+      <label>End °C</label>
+      <input type="number" id="tEnd" value="100" min="20" max="400" step="5" oninput="onTR()">
+      <span class="unit">°C</span>
+    </div>
+    <div class="hint" id="trHint">—</div>
+  </div>
+
+  <button class="rb" onclick="runAnim()">▶ Animate</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MAIN DIAGRAMS (TTT + Thermal Cycle)
+     ══════════════════════════════════════════════════════════ -->
+<div class="diags">
+  <div class="panel" id="pDiag">
+    <div class="pt">
+      <span id="dTitle">TTT — 0.40% C</span>
+      <span style="font-size:9px;color:var(--tx3);">click → phase at that point</span>
+    </div>
+    <canvas id="tttC" style="display:block;width:100%;height:calc(100% - 20px);"></canvas>
+    <div class="tip" id="tttTip"></div>
+  </div>
+  <div class="panel" id="pTher">
+    <div class="pt">Thermal cycle</div>
+    <canvas id="therC" style="display:block;width:100%;height:calc(100% - 20px);"></canvas>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     BOTTOM PANELS (Microstructure + Properties)
+     ══════════════════════════════════════════════════════════ -->
+<div class="bot">
+  <div class="panel" id="pMicro">
+    <div class="pt">
+      <span>Microstructure</span>
+      <span id="mTag" style="color:var(--acc);font-size:9px;"></span>
+    </div>
+    <canvas id="microC" style="display:block;width:100%;height:calc(100% - 46px);"></canvas>
+    <div id="mLbl" style="font-size:9px;font-family:var(--m);color:var(--tx2);text-align:center;margin-top:3px;line-height:1.4;"></div>
+  </div>
+  <div class="panel" id="pProps">
+    <div class="pt">Properties + phase breakdown</div>
+    <div id="propsDiv" style="margin-top:2px;"></div>
+    <div id="phInfo" style="font-size:9px;color:var(--tx3);font-family:var(--m);margin-top:5px;border-top:1px solid var(--bd);padding-top:4px;line-height:1.6;"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     STATUS BAR
+     ══════════════════════════════════════════════════════════ -->
+<div class="stbar">
+  <div>C: <span id="st0">0.40%</span></div>
+  <div>HT: <span id="st1">Normalizing</span></div>
+  <div>Phases: <span id="st2">—</span></div>
+  <div>Aust: <span id="st3">—</span></div>
+  <div id="stT" style="display:none;">Temper: <span id="st5">400°C</span></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     INFO MODALS
+     ══════════════════════════════════════════════════════════ -->
+<div class="mw" id="mWrap" onclick="closeMod(event)">
+  <div class="md" onclick="event.stopPropagation()">
+    <div class="mt" id="mTitle"></div>
+    <div class="mb" id="mBody"></div>
+    <button class="mc" onclick="closeMod()">Close</button>
+  </div>
+</div>
+
+</div><!-- end .wrap -->
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   SECTION 1: APPLICATION STATE
+   Single source of truth for all user selections.
+   ════════════════════════════════════════════════════════════ */
+const S = {
+  c:      0.40,   // carbon content (wt%)
+  ht:     'norm', // heat treatment: 'anneal'|'norm'|'qt'|'sph'
+  dt:     'ttt',  // diagram type: 'ttt'|'cct'
+  rate:   20,     // cooling rate (°C/s)
+  temT:   400,    // temper temperature (°C) — Q+T only
+  tEnd:   100,    // end (observation) temperature (°C)
+  aFrac:  1,      // animation progress 0→1
+  clicked: null   // {lx, T} of last clicked point on TTT
+};
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 2: INFO MODAL CONTENT
+   ════════════════════════════════════════════════════════════ */
+const MODS = {
+  rate: {
+    t: 'Cooling rate & phase formation',
+    b: `<b>Rate determines pearlite type, not temperature.</b><br><br>
+<b>Annealing (0–20°C/s):</b> Always coarse pearlite above 550°C.
+Below 550°C remaining austenite → bainite. Below Ms → martensite.<br><br>
+<b>Normalizing (20–80°C/s):</b> Fine pearlite above 550°C.
+Same rules below 550°C.<br><br>
+<b>Key rule:</b> Once pearlite/bainite forms it is permanent.
+Only austenite can keep transforming.`
+  },
+  temper: {
+    t: 'Tempering — martensite stays martensite',
+    b: `After quenching you have martensite. Tempering (150–650°C,
+always below A₁=723°C) does NOT convert martensite back to austenite.<br><br>
+Carbon diffuses out forming fine ε-carbide inside the laths.
+Higher temper temp → more carbide → lower hardness, higher toughness.`
+  },
+  trange: {
+    t: 'End temperature',
+    b: `Where you stop cooling and observe.<br>
+• Above Ms → remaining austenite = retained (metastable)<br>
+• Below Ms → K-M: f = 1−exp(−0.011×(Ms−T))<br>
+• Below Mf → transformation essentially complete`
+  }
+};
+function openMod(k) {
+  document.getElementById('mTitle').textContent = MODS[k].t;
+  document.getElementById('mBody').innerHTML = MODS[k].b;
+  document.getElementById('mWrap').classList.add('show');
+}
+function closeMod(e) {
+  if (!e || e.target === document.getElementById('mWrap'))
+    document.getElementById('mWrap').classList.remove('show');
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 3: STEEL PHYSICS CONSTANTS
+   All temperatures in °C, all times in seconds.
+   ════════════════════════════════════════════════════════════ */
+const A1  = () => 723;
+const A3  = () => S.c >= 0.77 ? 723 : Math.round(912 - 254 * S.c / 0.77);
+const Acm = () => S.c <= 0.77 ? A3() : Math.round(723 + 66 * (S.c - 0.77) / 0.63);
+const Tc  = () => S.c <= 0.77 ? A3() : Acm();   // lower critical temperature
+const Ta  = () => Tc() + 50;                    // austenitizing temperature
+const Ms  = () => Math.max(60, Math.round(539 - 423 * S.c)); // martensite start
+const Mf  = () => Math.max(-30, Ms() - 220);                 // martensite finish
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function carbonBlend(c, pts) {
+  if (c <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    const [c1, v1] = pts[i - 1], [c2, v2] = pts[i];
+    if (c <= c2) return lerp(v1, v2, (c - c1) / Math.max(1e-6, c2 - c1));
+  }
+  return pts[pts.length - 1][1];
+}
+
+// TTT nose parameters (fastest transformation point) — smoothly varying with carbon
+const NOSE_T  = () => carbonBlend(S.c, [[0.02, 640], [0.25, 600], [0.40, 565], [0.77, 540], [1.00, 515], [1.40, 490]]);
+const NOSE_LX = () => carbonBlend(S.c, [[0.02, 1.55], [0.25, 1.35], [0.40, 1.20], [0.77, 1.10], [1.00, 0.95], [1.40, 0.82]]);
+
+// Pearlite/bainite boundary — above this: pearlite forms; below: bainite forms
+const BAINITE_BOUNDARY = 550; // °C
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 4: TTT CURVE GEOMETRY
+   tS(T) = log10(seconds) to START transformation at temperature T
+   tF(T) = log10(seconds) to FINISH transformation at temperature T
+   These define the classic C-curves on the TTT diagram.
+   ════════════════════════════════════════════════════════════ */
+function tS(T) {
+  const spread = Math.pow((T - NOSE_T()) / 185, 2);
+  const leftShift = S.dt === 'cct' ? 0.18 : 0.24;
+  return NOSE_LX() + spread * (S.dt === 'cct' ? 1.08 : 0.96) - leftShift;
+}
+function tF(T) {
+  return tS(T) + 0.78 + Math.pow((T - NOSE_T()) / 185, 2) * 0.26;
+}
+
+function regimeRate() {
+  if (S.ht === 'anneal') return Math.min(S.rate, 20);
+  if (S.ht === 'norm')   return Math.min(Math.max(S.rate, 20), 80);
+  return S.rate;
+}
+
+function effectiveEndTemp(ht = S.ht) {
+  if (ht === 'anneal' || ht === 'norm') return Math.max(S.tEnd, Ms() + 5);
+  return S.tEnd;
+}
+
+function buildCoolingSteps(upToFrac) {
+  const ht = S.ht, ta = Ta(), tEnd = effectiveEndTemp(ht), mf = Mf(), a1 = A1();
+  const f = upToFrac == null ? 1 : Math.max(0, Math.min(1, upToFrac));
+  const steps = [];
+  let elapsed = 0;
+  const pushStep = (T, hold=false, temper=false) => {
+    steps.push({ T, elapsed, lx: Math.log10(Math.max(0.01, elapsed || 0.01)), hold, temper });
+  };
+
+  if (ht === 'qt') {
+    const qr = Math.max(S.rate, 80);
+    const Tf = Math.max(mf - 10, tEnd, 20);
+    for (let T = ta; T >= Tf; T -= 1) {
+      elapsed = Math.max(0.01, (ta - T) / qr);
+      pushStep(T, false, false);
+    }
+    const n = Math.max(1, Math.floor(steps.length * f));
+    return steps.slice(0, n);
+  }
+
+  if (ht === 'sph') {
+    for (let i = 0; i <= 120; i++) {
+      const T = a1 - 30 + 55 * Math.sin(i / 12 * Math.PI);
+      elapsed = 0.1 + i * 2.5;
+      pushStep(T, false, false);
+    }
+    const n = Math.max(1, Math.floor(steps.length * f));
+    return steps.slice(0, n);
+  }
+
+  const coolRate = regimeRate();
+  for (let T = ta; T >= Math.max(tEnd, 20); T -= 1) {
+    elapsed += 1 / coolRate;
+    pushStep(T, false, false);
+  }
+
+  const n = Math.max(1, Math.floor(steps.length * f));
+  return steps.slice(0, n);
+}
+
+function simulateNonQtSteps(steps) {
+  const ht = S.ht, ms = Ms(), a1 = A1();
+  let gamma = 1.0, coarse = 0.0, fine = 0.0, bainite = 0.0;
+  let startT = null, finishT = null, bainiteStartT = null;
+
+  for (let i = 0; i < steps.length; i++) {
+    const { T, lx } = steps[i];
+    if (T >= a1) continue;
+    if (gamma < 0.0005) break;
+
+    if (T >= BAINITE_BOUNDARY) {
+      const s = tS(T), fin = tF(T);
+      if (lx >= s) {
+        if (startT == null) startT = T;
+        const prog = Math.min(1, (lx - s) / Math.max(0.001, fin - s));
+        const delta = Math.min(gamma, gamma * (0.025 + 0.12 * prog));
+        if (delta > 1e-5) {
+          if (ht === 'anneal') coarse += delta; else fine += delta;
+          gamma -= delta;
+        }
+        if (lx >= fin && gamma > 1e-5) {
+          if (finishT == null) finishT = T;
+          if (ht === 'anneal') coarse += gamma; else fine += gamma;
+          gamma = 0;
+        }
+      }
+    } else if (T > ms) {
+      const s = tS(T), fin = tF(T);
+      if (lx >= s) {
+        if (bainiteStartT == null) bainiteStartT = T;
+        const prog = Math.min(1, (lx - s) / Math.max(0.001, fin - s));
+        const delta = Math.min(gamma, gamma * (0.025 + 0.12 * prog));
+        if (delta > 1e-5) {
+          bainite += delta;
+          gamma -= delta;
+        }
+        if (lx >= fin && gamma > 1e-5) {
+          bainite += gamma;
+          gamma = 0;
+        }
+      }
+    }
+  }
+
+  const lastT = steps.length ? steps[steps.length - 1].T : Ta();
+  const retained = gamma;
+  return mkResult({
+    coarse, fine, bainite, retained,
+    gammaAtMs: gamma, startT, finishT, bainiteStartT,
+    currentT: lastT,
+    enteredPearlite: !!startT,
+    pearliteKind: ht === 'anneal' ? 'coarse' : 'fine'
+  });
+}
+
+function simulateQtPathSteps(steps) {
+  const ms = Ms();
+  const cFrac = Math.min(0.18, 0.04 + (S.temT - 150) / 500 * 0.14);
+  const quenchSteps = steps.filter(s => !s.temper);
+  const temperSteps = steps.filter(s => s.temper);
+  const minQuenchT = quenchSteps.length ? Math.min(...quenchSteps.map(s => s.T)) : Ta();
+  const fM = minQuenchT < ms ? 1 - Math.exp(-0.011 * Math.max(0, ms - minQuenchT)) : 0;
+  const retained = Math.max(0, 1 - fM);
+  let martensite = fM, tempered = 0, carbide = 0;
+  if (temperSteps.length) {
+    const totalTemper = pathPts().filter(p => p.temper).length || temperSteps.length;
+    const temperProg = Math.max(0, Math.min(1, temperSteps.length / totalTemper));
+    tempered = martensite * temperProg * (1 - cFrac);
+    carbide  = martensite * temperProg * cFrac;
+    martensite = martensite * (1 - temperProg);
+  }
+  return mkResult({ martensite, tempered, carbide, retained, gammaAtMs: retained, currentT: steps.length ? steps[steps.length - 1].T : Ta() });
+}
+
+function stateAtPathIndex(idx) {
+  const pts = pathPts();
+  if (!pts.length) return runStateMachine(1);
+  const i = Math.max(0, Math.min(idx, pts.length - 1));
+  const prefix = pts.slice(0, i + 1);
+  if (S.ht === 'qt') return simulateQtPathSteps(prefix);
+  if (S.ht === 'sph') return runStateMachine((i + 1) / pts.length);
+  return simulateNonQtSteps(prefix);
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 5: CORE PHASE TRANSFORMATION STATE MACHINE
+   ────────────────────────────────────────────────────────────
+   This is the heart of the simulator. It walks the cooling path
+   step by step and applies the following rules at each step:
+
+   RULE 1: Only austenite (gamma) can transform. Pearlite,
+           bainite, and martensite are permanent once formed.
+
+   RULE 2: Which phase gamma converts TO depends on the current
+           temperature zone AND the heat treatment type:
+           - Above 550°C (pearlite zone): gamma → pearlite
+             (coarse if anneal, fine if norm)
+           - 550°C to Ms (bainite zone): gamma → bainite
+           - Below Ms: gamma → martensite (K-M equation)
+
+   RULE 3: Rate of conversion uses position between start/finish
+           curves: progress = (lx - start) / (finish - start)
+           New pearlite = current_pearlite + gamma * progress
+           This is MONOTONICALLY INCREASING — never decreases.
+
+   RULE 4: Quench bypasses nose entirely.
+           Temper reheats martensite below A1 — no austenite forms.
+
+   upToFrac: 0.0–1.0, allows animation to show intermediate states
+   ════════════════════════════════════════════════════════════ */
+function runStateMachine(upToFrac) {
+  const ht = S.ht, ms = Ms(), a1 = A1(), tEnd = effectiveEndTemp(S.ht);
+
+  if (ht === 'sph') return mkResult({ ferrite: 0.88, spheroidite: 0.12 });
+
+  if (ht === 'qt') {
+    const fM = tEnd < ms ? 1 - Math.exp(-0.011 * (ms - tEnd)) : 0;
+    const fRet = Math.max(0, 1 - fM);
+    const cFrac = Math.min(0.18, 0.04 + (S.temT - 150) / 500 * 0.14);
+    return mkResult({
+      tempered: fM * (1 - cFrac),
+      carbide:  fM * cFrac,
+      retained: fRet,
+      gammaAtMs: 1,
+      enteredPearlite: false,
+      pearliteKind: 'none'
+    });
+  }
+
+  const steps = buildCoolingSteps(upToFrac);
+  let gamma = 1.0, coarse = 0.0, fine = 0.0, bainite = 0.0;
+  let startT = null, finishT = null, bainiteStartT = null;
+
+  for (let i = 0; i < steps.length; i++) {
+    const { T, lx, hold } = steps[i];
+    if (T >= a1) continue;
+    if (gamma < 0.0005) break;
+
+    if (T >= BAINITE_BOUNDARY) {
+      const s = tS(T), fin = tF(T);
+      if (lx >= s) {
+        if (startT == null) startT = T;
+        const prog = Math.min(1, (lx - s) / Math.max(0.001, fin - s));
+        const delta = Math.min(gamma, gamma * (0.025 + 0.12 * prog));
+        if (delta > 1e-5) {
+          if (ht === 'anneal') coarse += delta; else fine += delta;
+          gamma -= delta;
+        }
+        if (lx >= fin && gamma > 1e-5) {
+          if (finishT == null) finishT = T;
+          if (ht === 'anneal') coarse += gamma; else fine += gamma;
+          gamma = 0;
+        }
+      }
+    } else if (T > ms) {
+      if (gamma < 0.0005) continue;
+      const s = tS(T), fin = tF(T);
+      if (lx >= s) {
+        if (bainiteStartT == null) bainiteStartT = T;
+        const prog = Math.min(1, (lx - s) / Math.max(0.001, fin - s));
+        const delta = Math.min(gamma, gamma * (0.025 + 0.12 * prog));
+        if (delta > 1e-5) {
+          bainite += delta;
+          gamma -= delta;
+        }
+        if (lx >= fin && gamma > 1e-5) {
+          bainite += gamma;
+          gamma = 0;
+        }
+      }
+    } else {
+      break;
+    }
+  }
+
+  let martensite = 0, retained = 0;
+  const gammaAtMs = gamma;
+  if (gamma > 0.001) {
+    if (tEnd < ms) {
+      const fM = 1 - Math.exp(-0.011 * Math.max(0, ms - tEnd));
+      martensite = gamma * fM;
+      retained = gamma * (1 - fM);
+      gamma = 0;
+    } else {
+      retained = gamma;
+    }
+  }
+
+  return mkResult({
+    coarse, fine, bainite, martensite, retained,
+    gammaAtMs, startT, finishT, bainiteStartT,
+    enteredPearlite: !!startT,
+    pearliteKind: ht === 'anneal' ? 'coarse' : 'fine'
+  });
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 6: PHASE RESULT BUILDER
+   Converts raw fractions into a labeled phase array.
+   ════════════════════════════════════════════════════════════ */
+function mkResult(data) {
+  const phases = [];
+  const add = (n, f, c, sub, note) => {
+    if (f > 0.005) phases.push({ n, f, c, sub, note: note || '' });
+  };
+  add('Coarse pearlite (α+Fe₃C)', data.coarse    || 0, '#9a6ada', 'coarse_pearlite', 'Furnace cool · lamellae ~0.5–1µm');
+  add('Fine pearlite (α+Fe₃C)',   data.fine      || 0, '#b07af0', 'fine_pearlite',   'Air cool · lamellae ~100–300nm');
+  add('Bainite (α+Fe₃C)',         data.bainite   || 0, '#e8a832', 'bainite',          'Remaining γ below 550°C → feathery ferrite+carbides');
+  add('Martensite (α\')',          data.martensite|| 0, '#da5a4a', 'martensite',       `From remaining γ below Ms · K-M equation`);
+  add('Tempered martensite',       data.tempered  || 0, '#da5a4a', 'tempered',         `Tempered at ${S.temT}°C · carbides precipitated`);
+  add('ε-Carbide (Fe₂.₄C)',       data.carbide   || 0, '#e8a832', 'carbide',           'Precipitated during temper');
+  add('Retained austenite (γ)',    data.retained  || 0, '#4aae6a', 'retained',          'Cooling stopped before full transform');
+  add('Ferrite (α)',               data.ferrite   || 0, '#4a9eda', 'ferrite',            'Matrix');
+  add('Spheroidite (Fe₃C)',        data.spheroidite||0, '#9a6ada', 'spheroidite',        'Globular cementite');
+  if (phases.length === 0)
+    phases.push({ n: 'Austenite (γ)', f: 1, c: '#4aae6a', sub: 'austenite', note: 'No transformation yet' });
+  const tot = phases.reduce((s, p) => s + p.f, 0);
+  if (tot > 0.001) phases.forEach(p => p.f /= tot);
+  const summary = phases.map(p => `${p.n.split('(')[0].trim()} ${(p.f * 100).toFixed(0)}%`).join(' + ');
+  return { ...data, phases, summary };
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 7: POINT-CLICK PHASE READER
+   What phase exists at any (lx, T) point on the TTT diagram,
+   independent of the current treatment path.
+   ════════════════════════════════════════════════════════════ */
+function phaseAtPoint(lx, T) {
+  const a1 = A1(), tc = Tc(), ms = Ms(), mf = Mf(), BB = BAINITE_BOUNDARY, c = S.c;
+  const eu = 0.77, al = 0.022, cm = 6.7;
+
+  if (T > tc) return [{ n: 'Austenite (γ)', f: 1, c: '#4aae6a',
+    note: 'Above critical temperature — fully austenitic' }];
+
+  if (T > a1) {
+    if (c <= eu) {
+      const fA = Math.max(0, (eu - c) / (eu - al) * 0.5);
+      return [
+        { n: 'Proeutectoid ferrite (α)', f: fA,   c: '#4a9eda', note: 'Nucleating at grain boundaries' },
+        { n: 'Austenite (γ)',            f: 1 - fA, c: '#4aae6a', note: '' }
+      ];
+    }
+    const fC = Math.max(0, (c - eu) / (cm - eu) * 0.25);
+    return [
+      { n: 'Austenite (γ)',      f: 1 - fC, c: '#4aae6a', note: '' },
+      { n: 'Pro-eutectoid Fe₃C', f: fC,     c: '#9a6ada', note: 'Precipitating' }
+    ];
+  }
+
+  const s = tS(T), fin = tF(T);
+
+  // Left of start curve: no diffusional transformation yet
+  if (lx < s) {
+    if (T <= mf && c > 0.1) return [{ n: 'Martensite — complete', f: 1, c: '#da5a4a', note: 'Below Mf' }];
+    if (T <= ms && c > 0.1) return [{ n: 'Martensite — forming',  f: 1, c: '#da5a4a', note: 'Below Ms · K-M active' }];
+    return [{ n: 'Austenite (γ) — untransformed', f: 1, c: '#4aae6a',
+      note: 'Left of start curve. If cooling continues past Ms → martensite.' }];
+  }
+
+  // Right of finish curve: transformation complete
+  if (lx >= fin) {
+    if (T >= BB) {
+      if (c <= eu) {
+        const fA = Math.max(0, (eu - c) / (eu - al));
+        return [
+          { n: 'Proeutectoid α',    f: fA,     c: '#4a9eda', note: 'C=0.022wt%' },
+          { n: (S.ht === 'anneal' ? 'Coarse pearlite (α+Fe₃C)' : 'Pearlite (α+Fe₃C)'), f: 1 - fA, c: '#9a6ada', note: 'Lamellar structure' }
+        ];
+      }
+      const fC = Math.max(0, (c - eu) / (cm - eu));
+      return [
+        { n: (S.ht === 'anneal' ? 'Coarse pearlite (α+Fe₃C)' : 'Pearlite (α+Fe₃C)'),  f: 1 - fC, c: '#9a6ada', note: '' },
+        { n: 'Pro-eutectoid Fe₃C', f: fC,      c: '#8a95a3', note: 'Grain boundary cementite' }
+      ];
+    }
+    return [{ n: 'Bainite (α+Fe₃C)', f: 1, c: '#e8a832',
+      note: 'Transformation complete at this T/t' }];
+  }
+
+  // Between start and finish: partial transformation in progress
+  const prog = Math.min(1, (lx - s) / Math.max(0.001, fin - s));
+  const rem  = 1 - prog;
+  if (T >= BB) return [
+    { n: (S.ht === 'anneal' ? 'Coarse pearlite forming' : 'Pearlite forming'),        f: prog, c: '#9a6ada',
+      note: `${(prog*100).toFixed(0)}% transformed so far. Grows monotonically →` },
+    { n: 'Austenite (γ) remaining', f: rem,  c: '#4aae6a',
+      note: `${(rem*100).toFixed(0)}% still γ. Below 550°C → bainite. Below Ms → martensite.` }
+  ];
+  return [
+    { n: 'Bainite forming',         f: prog, c: '#e8a832',  note: `${(prog*100).toFixed(0)}% transformed` },
+    { n: 'Austenite (γ) remaining', f: rem,  c: '#4aae6a',  note: `${(rem*100).toFixed(0)}% → martensite if reaches Ms` }
+  ];
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 8: COOLING PATH COORDINATES
+   Builds (lx, T) points for drawing the path on TTT.
+   This is drawing logic only — phase fractions come from
+   the state machine in Section 5.
+   ════════════════════════════════════════════════════════════ */
+function pathPts() {
+  const ht = S.ht;
+  if (ht === 'qt') {
+    const ta = Ta(), mf = Mf();
+    const pts = [];
+    const qr = Math.max(S.rate, 80);
+    const Tf = Math.max(mf - 10, S.tEnd, 20);
+    for (let T = ta; T >= Tf; T -= 2)
+      pts.push({ lx: Math.log10(Math.max(0.005, (ta - T) / qr)), T });
+    const lastLx = pts[pts.length - 1].lx + 0.5;
+    for (let T = Tf; T <= S.temT; T += 3)
+      pts.push({ lx: lastLx + (T - Tf) / 400 * 0.4, T, temper: true });
+    for (let T = S.temT; T >= S.tEnd; T -= 3)
+      pts.push({ lx: lastLx + (S.temT - Tf) / 400 * 0.4 + (S.temT - T) / 200 * 0.3, T, temper: true });
+    return pts;
+  }
+  if (ht === 'sph') {
+    const a1 = A1();
+    const pts = [];
+    for (let i = 0; i <= 120; i++)
+      pts.push({ lx: -0.5 + i / 120 * 3.5, T: a1 - 30 + 55 * Math.sin(i / 12 * Math.PI) });
+    return pts;
+  }
+  return buildCoolingSteps(1).map(s => ({ lx: s.lx, T: s.T, hold: s.hold }));
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 9: TTT/CCT DIAGRAM DRAWING
+   ════════════════════════════════════════════════════════════ */
+function pcol() { return { anneal: '#4aae6a', norm: '#4a9eda', qt: '#da5a4a', sph: '#9a6ada' }[S.ht]; }
+function fmtT(lx) {
+  const s = Math.pow(10, lx);
+  if (s < 1)    return (s * 1e3).toFixed(0) + 'ms';
+  if (s < 60)   return s.toFixed(1) + 's';
+  if (s < 3600) return (s / 60).toFixed(1) + 'min';
+  return (s / 3600).toFixed(1) + 'h';
+}
+
+function drawTTT() {
+  const panel = document.getElementById('pDiag');
+  const el    = document.getElementById('tttC');
+  const W = Math.max(80, panel.clientWidth - 16);
+  const H = Math.max(60, panel.clientHeight - 24);
+  el.width = W; el.height = H;
+  const ctx = el.getContext('2d'); ctx.clearRect(0, 0, W, H);
+  const P = { l: 50, r: 14, t: 12, b: 22 };
+  const PW = W - P.l - P.r, PH = H - P.t - P.b;
+  if (PW < 10 || PH < 10) return;
+  const TMIN = 50, TMAX = 950, LMIN = -1, LMAX = 6;
+  const px = lx => P.l + (lx - LMIN) / (LMAX - LMIN) * PW;
+  const py = T  => P.t + PH * (1 - (T - TMIN) / (TMAX - TMIN));
+  const a1 = A1(), tc = Tc(), ms = Ms(), mf = Mf();
+  const n = { T: NOSE_T(), lx: NOSE_LX() };
+  const BB = BAINITE_BOUNDARY;
+
+  // Grid lines
+  ctx.strokeStyle = '#181e25'; ctx.lineWidth = 1;
+  for (let t = 100; t <= 900; t += 100) { ctx.beginPath(); ctx.moveTo(P.l, py(t)); ctx.lineTo(W - P.r, py(t)); ctx.stroke(); }
+  for (let l = 0; l <= 5; l++) { ctx.beginPath(); ctx.moveTo(px(l), P.t); ctx.lineTo(px(l), H - P.b); ctx.stroke(); }
+  ctx.strokeStyle = '#2a3040'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(P.l, P.t); ctx.lineTo(P.l, H - P.b); ctx.lineTo(W - P.r, H - P.b); ctx.stroke();
+  ctx.fillStyle = '#3d4553'; ctx.font = '9px IBM Plex Mono'; ctx.textAlign = 'right';
+  for (let t = 100; t <= 900; t += 100) ctx.fillText(t, P.l - 3, py(t) + 3);
+  ctx.textAlign = 'center';
+  ['0.1s', '1s', '10s', '100s', '1ks', '10ks'].forEach((l, i) => ctx.fillText(l, px(i + 0.5), H - P.b + 12));
+
+  // Phase zone shading (4 zones)
+  ctx.fillStyle = 'rgba(74,174,106,.07)';  ctx.fillRect(P.l, P.t,      PW, py(a1) - P.t);        // austenite
+  ctx.fillStyle = 'rgba(154,106,218,.06)'; ctx.fillRect(P.l, py(a1),   PW, py(BB) - py(a1));     // pearlite
+  ctx.fillStyle = 'rgba(232,168,50,.06)';  ctx.fillRect(P.l, py(BB),   PW, py(ms) - py(BB));     // bainite
+  ctx.fillStyle = 'rgba(218,90,74,.06)';   ctx.fillRect(P.l, py(ms),   PW, py(TMIN) - py(ms));   // martensite
+
+  // Zone text labels
+  ctx.font = '9px IBM Plex Mono'; ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(74,174,106,.38)';  ctx.fillText('Austenite (γ)',   px(n.lx - 0.3), py(a1 - 50));
+  ctx.fillStyle = 'rgba(154,106,218,.38)'; ctx.fillText('Pearlite zone',   px(n.lx + 1.4), py(a1 - 80));
+  ctx.fillStyle = 'rgba(232,168,50,.38)';  ctx.fillText('Bainite zone',    px(n.lx + 2.2), py(BB - 40));
+  ctx.fillStyle = 'rgba(218,90,74,.38)';   ctx.fillText('Martensite zone', px(n.lx + 2.8), py(ms - 50));
+
+  // 550°C bainite boundary
+  ctx.setLineDash([5, 3]); ctx.strokeStyle = 'rgba(232,168,50,.75)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(P.l, py(BB)); ctx.lineTo(W - P.r, py(BB)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(232,168,50,.8)'; ctx.font = '9px IBM Plex Mono'; ctx.textAlign = 'left';
+  ctx.fillText('550°C — bainite begins below this, only right of start curve', P.l + 3, py(BB) + 11);
+
+  // C-curves (start and finish)
+  ctx.strokeStyle = 'rgba(74,158,218,.8)'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+  ctx.beginPath();
+  for (let i = 0; i <= 80; i++) { const T = a1 - (a1 - TMIN) * (i / 80); i === 0 ? ctx.moveTo(px(tS(T)), py(T)) : ctx.lineTo(px(tS(T)), py(T)); }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(154,106,218,.75)';
+  ctx.beginPath();
+  for (let i = 0; i <= 80; i++) { const T = a1 - (a1 - TMIN) * (i / 80); i === 0 ? ctx.moveTo(px(tF(T)), py(T)) : ctx.lineTo(px(tF(T)), py(T)); }
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(74,158,218,.65)';  ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'left';
+  ctx.fillText('start curve',  px(tS(a1 - 30)) + 2, py(a1 - 30) - 3);
+  ctx.fillStyle = 'rgba(154,106,218,.65)';
+  ctx.fillText('finish curve', px(tF(a1 - 30)) + 2, py(a1 - 30) + 9);
+
+  // Critical temperature lines
+  const critLines = [
+    [a1,              'rgba(74,174,106,.7)',  'A₁ 723°C'],
+    [tc,              'rgba(74,174,106,.4)',  S.c <= 0.77 ? `A₃ ${A3()}°C` : `Acm ${Acm()}°C`],
+    [ms,              'rgba(218,90,74,.75)', `Ms ${ms}°C`],
+    [Math.max(mf, TMIN + 5), 'rgba(218,90,74,.35)', `Mf ${Math.max(mf, 0)}°C`]
+  ];
+  critLines.forEach(([T, col, lbl]) => {
+    ctx.setLineDash([4, 3]); ctx.strokeStyle = col; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(P.l, py(T)); ctx.lineTo(W - P.r, py(T)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = col; ctx.font = '9px IBM Plex Mono'; ctx.textAlign = 'left';
+    ctx.fillText(lbl, P.l + 3, py(T) - 3);
+  });
+
+  // ── COOLING PATH ────────────────────────────────────────────
+  const pts  = pathPts();
+  const res  = runStateMachine(S.aFrac);
+  const pc   = pcol();
+  const nAnim = Math.max(1, Math.floor(pts.length * S.aFrac));
+
+  // Draw path, color each segment by what's physically happening
+  ctx.lineWidth = 2.3;
+  let prev = null;
+  for (let i = 0; i < Math.min(nAnim, pts.length); i++) {
+    const { lx, T, temper } = pts[i];
+    if (lx > LMAX + 0.3 || T < TMIN - 10) { prev = null; continue; }
+    if (prev) {
+      let col = pc;
+      if (temper)                          col = '#e8a832'; // temper arc
+      else if (T <= ms)                    col = '#da5a4a'; // martensite zone
+      else if (T <= BB && lx >= tS(T))     col = '#e8a832'; // bainite forming
+      else if (T <= a1 && lx >= tS(T))     col = '#9a6ada'; // pearlite forming
+      ctx.strokeStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 2;
+      ctx.beginPath(); ctx.moveTo(px(prev.lx), py(prev.T)); ctx.lineTo(px(lx), py(T)); ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    prev = { lx, T };
+  }
+
+  // Start dot
+  if (pts.length) { ctx.fillStyle = pc; ctx.beginPath(); ctx.arc(px(pts[0].lx), py(pts[0].T), 5, 0, Math.PI * 2); ctx.fill(); }
+
+  // Annotation: where pearlite starts forming
+  if (res.startT) {
+    const sL = tS(res.startT);
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#9a6ada'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(px(sL), py(res.startT), 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(210,190,255,.9)'; ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'left';
+    ctx.fillText(`← ${S.ht === 'anneal' ? 'coarse' : 'fine'} pearlite starts`, px(sL) + 7, py(res.startT) + 3);
+  }
+  // Where pearlite finishes
+  if (res.finishT) {
+    const fL = tF(res.finishT);
+    ctx.fillStyle = '#9a6ada'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(px(fL), py(res.finishT), 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(200,180,255,.8)'; ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'left';
+    ctx.fillText(`← ${S.ht === 'anneal' ? 'coarse' : 'fine'} pearlite complete`, px(fL) + 6, py(res.finishT) - 4);
+  }
+
+  // Bainite fraction annotation
+  const bF = res.bainite || 0;
+  if (bF > 0.005) {
+    ctx.fillStyle = 'rgba(232,168,50,.9)'; ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'right';
+    ctx.fillText(`${(bF * 100).toFixed(0)}% γ → bainite below 550°C`, W - P.r - 3, py(BB + 18));
+  }
+  // Martensite from remaining gamma
+  const gAtMs = res.gammaAtMs || 0;
+  if (gAtMs > 0.005 && S.tEnd < ms) {
+    ctx.fillStyle = 'rgba(218,90,74,.9)'; ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'right';
+    ctx.fillText(`${(gAtMs * 100).toFixed(0)}% γ → martensite below Ms`, W - P.r - 3, py(ms + 18));
+  }
+  // Q+T temper annotation
+  if (S.ht === 'qt') {
+    const tPts = pts.filter(p => p.temper && p.lx <= LMAX);
+    if (tPts.length > 3) {
+      const mid = tPts[Math.floor(tPts.length / 2)];
+      ctx.fillStyle = 'rgba(232,168,50,.75)'; ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'left';
+      if (mid.lx <= LMAX) ctx.fillText('Temper <A₁ · M stays M', px(mid.lx), py(mid.T) - 6);
+    }
+  }
+
+  // Animate dot
+  if (S.aFrac < 1) {
+    const idx = Math.min(Math.floor(S.aFrac * pts.length), pts.length - 1);
+    const { lx, T } = pts[idx];
+    if (lx <= LMAX && T >= TMIN) {
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = pc; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(px(lx), py(T), 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+  }
+  // Clicked point marker
+  if (S.clicked) {
+    const { lx, T } = S.clicked;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(px(lx), py(T), 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.15)';
+    ctx.beginPath(); ctx.arc(px(lx), py(T), 6, 0, Math.PI * 2); ctx.fill();
+  }
+  // End dot
+  const vp = pts.filter(p => p.lx <= LMAX + 0.3 && p.T >= TMIN - 10);
+  if (vp.length) {
+    const ep = vp[vp.length - 1];
+    ctx.fillStyle = pc; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(px(ep.lx), py(ep.T), 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+
+  document.getElementById('dTitle').textContent = `${S.dt.toUpperCase()} — ${S.c.toFixed(2)}% C  Ms=${ms}°C`;
+
+  // Click handler — if you click near the cooling path, read cumulative path history
+  el.style.cursor = 'crosshair';
+  el.onclick = (e) => {
+    const r  = el.getBoundingClientRect();
+    const sx = (e.clientX - r.left) / r.width  * W;
+    const sy = (e.clientY - r.top)  / r.height * H;
+    const lx = LMIN + (sx - P.l) / PW * (LMAX - LMIN);
+    const T  = TMIN + (1 - (sy - P.t) / PH) * (TMAX - TMIN);
+    if (sx < P.l || sx > W - P.r || sy < P.t || sy > H - P.b) return;
+    const pts = pathPts();
+    let nearest = -1, best = 1e9;
+    pts.forEach((p, i) => {
+      const d = Math.hypot(px(p.lx) - sx, py(p.T) - sy);
+      if (d < best) { best = d; nearest = i; }
+    });
+    const nearPath = nearest >= 0 && best <= 12;
+    S.clicked = { lx, T };
+    const pathRes = nearPath ? stateAtPathIndex(nearest) : null;
+    const phs = nearPath ? pathRes.phases : phaseAtPoint(lx, T);
+    const tip = document.getElementById('tttTip');
+    tip.style.display = 'block';
+    tip.style.left    = Math.min(sx + 10, el.clientWidth - 235) + 'px';
+    tip.style.top     = Math.max(4, sy - 34) + 'px';
+    tip.innerHTML     = `<b>${Math.round(T)}°C · ${fmtT(nearPath ? pts[nearest].lx : lx)}</b><br>` +
+      (nearPath ? `<span style="color:var(--acc)">Path history at this point</span><br>` : `<span style="color:var(--tx3)">Point field state</span><br>`) +
+      phs.map(p => `<span style="color:${p.c}">${p.n}</span>: ${(p.f * 100).toFixed(0)}%` +
+        (p.note ? `<br><span style="color:var(--tx3);font-size:8px;">↳ ${p.note}</span>` : '')).join('<br>');
+    setTimeout(() => { tip.style.display = 'none'; }, 7000);
+    showMicro(phs, T);
+    drawTTT();
+  };
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 10: THERMAL CYCLE DIAGRAM DRAWING
+   ════════════════════════════════════════════════════════════ */
+function drawThermal() {
+  const panel = document.getElementById('pTher');
+  const el    = document.getElementById('therC');
+  const W = Math.max(80, panel.clientWidth - 16);
+  const H = Math.max(60, panel.clientHeight - 24);
+  el.width = W; el.height = H;
+  const ctx = el.getContext('2d'); ctx.clearRect(0, 0, W, H);
+  const P = { l: 38, r: 10, t: 12, b: 20 }, PW = W - P.l - P.r, PH = H - P.t - P.b;
+  if (PW < 10 || PH < 10) return;
+  const ta = Ta(), a1 = A1(), tc = Tc(), ms = Ms(), ht = S.ht, BB = BAINITE_BOUNDARY;
+  const displayEnd = effectiveEndTemp(ht);
+  const TMAX = ta + 60, TMINP = -30;
+  const py = T => P.t + PH * (1 - (T - TMINP) / (TMAX - TMINP));
+  const hD = ta / 8;
+  let tpts = [];
+  for (let i = 0; i <= 25; i++) tpts.push([i / 25 * hD, 20 + (ta - 20) * i / 25, 'heat']);
+  const hE = hD + 20;
+  for (let i = 0; i <= 6; i++) tpts.push([hD + i / 6 * 20, ta, 'hold']);
+  if (ht === 'anneal') {
+    const cr = Math.min(S.rate, 20), cT = Math.max(1, (ta - displayEnd) / cr);
+    for (let i = 0; i <= 50; i++) tpts.push([hE + i / 50 * cT, ta - i / 50 * (ta - displayEnd), 'cool']);
+  } else if (ht === 'norm') {
+    const cr = Math.min(Math.max(S.rate, 21), 80), cT = Math.max(1, (ta - displayEnd) / cr);
+    for (let i = 0; i <= 50; i++) tpts.push([hE + i / 50 * cT, ta - i / 50 * (ta - displayEnd), 'cool']);
+  } else if (ht === 'qt') {
+    const qR = Math.max(S.rate, 80), Tf = Math.max(Mf() - 10, S.tEnd, 20);
+    const qT = Math.max(0.3, (ta - Tf) / qR), qE = hE + qT;
+    for (let i = 0; i <= 25; i++) tpts.push([hE + i / 25 * qT, ta - i / 25 * (ta - Tf), 'quench']);
+    const tE = qE + 30;
+    for (let i = 0; i <= 15; i++) tpts.push([qE + i / 15 * 18, Tf + i / 15 * (S.temT - Tf), 'tu']);
+    for (let i = 0; i <= 8;  i++) tpts.push([qE + 18 + i / 8 * 7, S.temT, 'th']);
+    for (let i = 0; i <= 18; i++) tpts.push([tE + i / 18 * 20, S.temT - i / 18 * (S.temT - S.tEnd), 'td']);
+  } else {
+    const base = a1 - 30;
+    for (let i = 0; i <= 80; i++) tpts.push([hE + i * 1.2, base + 55 * Math.sin(i / 8 * Math.PI), 'sph']);
+  }
+  const XMAX = Math.max(...tpts.map(t => t[0])) * 1.06;
+  const px = t => P.l + t / XMAX * PW;
+  ctx.strokeStyle = '#181e25'; ctx.lineWidth = 1;
+  for (let T = 200; T <= TMAX; T += 200) { ctx.beginPath(); ctx.moveTo(P.l, py(T)); ctx.lineTo(W - P.r, py(T)); ctx.stroke(); }
+  ctx.strokeStyle = '#2a3040'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(P.l, P.t); ctx.lineTo(P.l, H - P.b); ctx.lineTo(W - P.r, H - P.b); ctx.stroke();
+  ctx.fillStyle = '#3d4553'; ctx.font = '9px IBM Plex Mono'; ctx.textAlign = 'right';
+  for (let T = 200; T <= TMAX; T += 200) ctx.fillText(T, P.l - 2, py(T) + 3);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#3d4553'; ctx.fillText('Time →', P.l + PW * .5, H - P.b + 14);
+  // Zone shading
+  ctx.fillStyle = 'rgba(154,106,218,.04)'; ctx.fillRect(P.l, py(a1), PW, py(BB) - py(a1));
+  ctx.fillStyle = 'rgba(232,168,50,.04)';  ctx.fillRect(P.l, py(BB), PW, py(ms) - py(BB));
+  ctx.fillStyle = 'rgba(218,90,74,.04)';   ctx.fillRect(P.l, py(ms), PW, py(TMINP) - py(ms));
+  // Critical lines
+  [[a1, 'rgba(74,174,106,.65)', 'A₁'], [tc, 'rgba(74,174,106,.35)', S.c <= 0.77 ? 'A₃' : 'Acm'],
+   [ms, 'rgba(218,90,74,.65)', 'Ms'], [BB, 'rgba(232,168,50,.7)', '550°C']].forEach(([T, co, lb]) => {
+    ctx.setLineDash([3, 3]); ctx.strokeStyle = co; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.moveTo(P.l, py(T)); ctx.lineTo(W - P.r, py(T)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = co; ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'left'; ctx.fillText(lb, P.l + 2, py(T) - 2);
+  });
+  if (ht === 'qt') {
+    ctx.fillStyle = 'rgba(74,174,106,.35)'; ctx.font = '7px IBM Plex Mono'; ctx.textAlign = 'right';
+    ctx.fillText('temper stays below A₁ →', W - P.r - 2, py(a1) + 9);
+  }
+  ctx.setLineDash([2, 3]); ctx.strokeStyle = 'rgba(232,168,50,.45)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(P.l, py(displayEnd)); ctx.lineTo(W - P.r, py(displayEnd)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(232,168,50,.65)'; ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'right';
+  ctx.fillText(`End ${displayEnd}°C`, W - P.r - 2, py(displayEnd) - 2);
+  const sc = { heat:'#4aae6a', hold:'#4aae6a', cool:'#4a9eda', quench:'#da5a4a', tu:'#e8a832', th:'#e8a832', td:'#e8a832', sph:'#9a6ada' };
+  ctx.lineWidth = 2.2;
+  for (let i = 1; i < tpts.length; i++) {
+    const [t1, T1, st] = tpts[i - 1], [t2, T2] = tpts[i];
+    ctx.strokeStyle = sc[st] || '#4a9eda';
+    ctx.beginPath(); ctx.moveTo(px(t1), py(T1)); ctx.lineTo(px(t2), py(T2)); ctx.stroke();
+  }
+  const res = runStateMachine(1);
+  if (res.startT) {
+    const ap = tpts.find(p => Math.abs(p[1] - res.startT) < 12);
+    if (ap) {
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = '#9a6ada'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(px(ap[0]), py(res.startT), 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(210,190,255,.8)'; ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'left';
+      ctx.fillText(`${S.ht === 'anneal' ? 'coarse' : 'fine'} pearlite starts`, px(ap[0]) + 6, py(res.startT) - 3);
+      
+    }
+  }
+  const bF2 = res.bainite || 0, gMs = res.gammaAtMs || 0;
+  if (bF2 > 0.005) { ctx.fillStyle = 'rgba(232,168,50,.85)'; ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'right'; ctx.fillText(`${(bF2 * 100).toFixed(0)}% γ → bainite`, W - P.r - 2, py(BB + 16)); }
+  if (gMs > 0.005 && S.tEnd < ms) { ctx.fillStyle = 'rgba(218,90,74,.85)'; ctx.font = '8px IBM Plex Mono'; ctx.textAlign = 'right'; ctx.fillText(`${(gMs * 100).toFixed(0)}% γ → M'`, W - P.r - 2, py(ms + 16)); }
+  ctx.textAlign = 'center'; ctx.font = '8px IBM Plex Mono';
+  ctx.fillStyle = 'rgba(74,174,106,.6)';  ctx.fillText('① Heat',  px(hD * .4),        H - P.b + 13);
+  ctx.fillStyle = 'rgba(74,174,106,.4)';  ctx.fillText('② Hold',  px((hD + hE) * .5), H - P.b + 13);
+  if (ht === 'qt') {
+    ctx.fillStyle = 'rgba(218,90,74,.6)';  ctx.fillText('③ Quench',    px(XMAX * .5),  H - P.b + 13);
+    ctx.fillStyle = 'rgba(232,168,50,.6)'; ctx.fillText('④ Temper <A₁', px(XMAX * .82), H - P.b + 13);
+  } else {
+    ctx.fillStyle = 'rgba(74,158,218,.6)'; ctx.fillText('③ Cool', px(XMAX * .7), H - P.b + 13);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 11: MICROSTRUCTURE DRAWING
+   Each grain circle (book-style) is divided into horizontal
+   bands proportional to each phase fraction.
+   ════════════════════════════════════════════════════════════ */
+function rng(i, sd) { let x = Math.sin(i * sd + 1.618) * 43758.5453; return x - Math.floor(x); }
+
+function showMicro(phases, T) {
+  const panel = document.getElementById('pMicro');
+  const el    = document.getElementById('microC');
+  const W = Math.max(80, panel.clientWidth - 16);
+  const H = Math.max(60, panel.clientHeight - 50);
+  el.width = W; el.height = H;
+  const ctx = el.getContext('2d'); ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0d10'; ctx.fillRect(0, 0, W, H);
+  const bR = Math.min(W, H) * .22;
+  const circs = [{ x: W * .27, y: H * .52, r: bR * 1.2 }, { x: W * .67, y: H * .27, r: bR * .78 }, { x: W * .65, y: H * .73, r: bR * .76 }];
+  ctx.strokeStyle = 'rgba(74,174,106,.18)'; ctx.lineWidth = .8; ctx.setLineDash([3, 3]);
+  for (let i = 0; i < circs.length; i++)
+    for (let j = i + 1; j < circs.length; j++)
+      if (Math.hypot(circs[i].x - circs[j].x, circs[i].y - circs[j].y) < W * .65) {
+        ctx.beginPath(); ctx.moveTo(circs[i].x, circs[i].y); ctx.lineTo(circs[j].x, circs[j].y); ctx.stroke();
+      }
+  ctx.setLineDash([]);
+  circs.forEach((c, gi) => drawGrain(ctx, c.x, c.y, c.r, phases, gi));
+  document.getElementById('mLbl').innerHTML = `<b style="color:var(--acc)">${Math.round(T)}°C</b>  ` +
+    phases.map(p => `<span style="color:${p.c}">${p.n.split('(')[0].trim()}</span> <b>${(p.f * 100).toFixed(0)}%</b>`).join('  ·  ');
+  document.getElementById('mTag').textContent = phases[0]?.n.split('(')[0].trim() || '';
+  document.getElementById('st2').textContent  = phases.map(p => `${p.n.split('(')[0].trim()} ${(p.f * 100).toFixed(0)}%`).join(' + ');
+  document.getElementById('phInfo').innerHTML = phases.map(p =>
+    `<span style="color:${p.c}">${p.n}</span>: <b>${(p.f * 100).toFixed(0)}%</b>` + (p.note ? ` — ${p.note}` : '')).join('<br>');
+}
+
+function drawGrain(ctx, cx, cy, R, phases, gi) {
+  const sd = gi * 17 + 29;
+  ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = 'rgba(8,10,14,.97)'; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+  let cumF = 0;
+  phases.forEach((ph, pi) => {
+    if (ph.f < 0.005) return;
+    const yT = cy - R + 2 * R * cumF, bH = 2 * R * ph.f;
+    cumF += ph.f;
+    ctx.save(); ctx.beginPath(); ctx.rect(cx - R, yT, R * 2, Math.max(1, bH)); ctx.clip();
+    const sub = ph.sub || '';
+    if (sub === 'coarse_pearlite') {
+      for (let g = 0; g < 3; g++) {
+        const gx = cx + (rng(g*5+pi*19,sd)-.5)*R*.82, gy = yT + bH*(.1+rng(g*5+1+pi*19,sd)*.8);
+        const gr = Math.min(R*(.17+rng(g*5+2+pi*19,sd)*.15), bH*.43), ang = rng(g*5+3+pi*19,sd)*Math.PI;
+        ctx.save(); ctx.beginPath(); ctx.arc(gx, gy, gr, 0, Math.PI*2); ctx.clip();
+        ctx.save(); ctx.translate(gx, gy); ctx.rotate(ang);
+        for (let s = -gr; s <= gr; s += 7) {
+          ctx.fillStyle = Math.floor(s/7)%2===0 ? 'rgba(220,205,255,.97)' : 'rgba(8,5,22,.99)';
+          ctx.fillRect(-gr, s, gr*2, 7);
+        }
+        ctx.restore();
+        if (g===0&&gi===0) { ctx.fillStyle='rgba(255,255,255,.35)'; ctx.font='7px IBM Plex Mono'; ctx.textAlign='center'; ctx.fillText('~1µm',0,gr*.55); }
+        ctx.restore();
+        ctx.strokeStyle='rgba(165,125,235,.85)'; ctx.lineWidth=1.1; ctx.beginPath(); ctx.arc(gx,gy,gr,0,Math.PI*2); ctx.stroke();
+      }
+    } else if (sub === 'fine_pearlite') {
+      for (let g = 0; g < 6; g++) {
+        const gx=cx+(rng(g*5+pi*19,sd)-.5)*R*.88, gy=yT+bH*(.08+rng(g*5+1+pi*19,sd)*.84);
+        const gr=Math.min(R*(.12+rng(g*5+2+pi*19,sd)*.14),bH*.40), ang=rng(g*5+3+pi*19,sd)*Math.PI;
+        ctx.save(); ctx.beginPath(); ctx.arc(gx,gy,gr,0,Math.PI*2); ctx.clip();
+        ctx.save(); ctx.translate(gx,gy); ctx.rotate(ang);
+        for (let s=-gr; s<=gr; s+=2) {
+          ctx.fillStyle=Math.floor(s/2)%2===0?'rgba(155,132,208,.88)':'rgba(18,14,36,.95)';
+          ctx.fillRect(-gr,s,gr*2,2);
+        }
+        ctx.restore();
+        if (g===0&&gi===0) { ctx.fillStyle='rgba(255,255,255,.28)'; ctx.font='7px IBM Plex Mono'; ctx.textAlign='center'; ctx.fillText('~200nm',0,gr*.55); }
+        ctx.restore();
+        ctx.strokeStyle='rgba(118,92,188,.65)'; ctx.lineWidth=.75; ctx.beginPath(); ctx.arc(gx,gy,gr,0,Math.PI*2); ctx.stroke();
+      }
+    } else if (sub==='bainite') {
+      const cnt=Math.floor(40*ph.f);
+      for (let i=0;i<cnt;i++) {
+        const lx=cx+(rng(i*7+pi*41,sd)-.5)*R*1.7, ly=yT+bH*rng(i*7+1+pi*41,sd);
+        const len=R*(.15+rng(i*7+2+pi*41,sd)*.3), ang=(-18+rng(i*7+3+pi*41,sd)*36)*Math.PI/180;
+        ctx.strokeStyle=`rgba(220,160,50,${.38+rng(i*7+4+pi*41,sd)*.4})`; ctx.lineWidth=1+rng(i*11+pi*41,sd)*1.0;
+        ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx+Math.cos(ang)*len,ly+Math.sin(ang)*len); ctx.stroke();
+        if (rng(i*19+pi*41,sd)>.55) { ctx.fillStyle='rgba(232,168,50,.6)'; ctx.beginPath(); ctx.arc(lx+Math.cos(ang)*len*.5,ly+Math.sin(ang)*len*.5,.7+rng(i*23,sd)*1.1,0,Math.PI*2); ctx.fill(); }
+      }
+    } else if (sub==='martensite') {
+      for (let g=0;g<3;g++) { ctx.strokeStyle='rgba(74,174,106,.1)'; ctx.lineWidth=.7; ctx.setLineDash([2,2]); ctx.beginPath(); ctx.arc(cx+(rng(g*9,sd)-.5)*R*.7,cy+(rng(g*9+1,sd)-.5)*R*.7,Math.min(R*.2,bH*.36),0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
+      const cnt=Math.floor(52*ph.f);
+      for (let i=0;i<cnt;i++) {
+        const lx=cx+(rng(i*7+pi*31,sd)-.5)*R*1.8, ly=yT+bH*rng(i*7+1+pi*31,sd);
+        const len=R*(.14+rng(i*7+2+pi*31,sd)*.34), ang=(-30+rng(i*7+3+pi*31,sd)*60)*Math.PI/180;
+        ctx.strokeStyle=`rgba(218,90,74,${.45+rng(i*7+4+pi*31,sd)*.45})`; ctx.lineWidth=.8+rng(i*11+pi*31,sd)*1.0;
+        ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx+Math.cos(ang)*len,ly+Math.sin(ang)*len); ctx.stroke();
+      }
+    } else if (sub==='tempered') {
+      for (let i=0;i<28;i++) {
+        const lx=cx+(rng(i*7+pi*51,sd)-.5)*R*1.7, ly=yT+bH*rng(i*7+1+pi*51,sd);
+        const ang=(-30+rng(i*7+3+pi*51,sd)*60)*Math.PI/180, len=R*(.12+rng(i*7+2+pi*51,sd)*.2);
+        ctx.strokeStyle='rgba(200,110,70,.28)'; ctx.lineWidth=.7; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx+Math.cos(ang)*len,ly+Math.sin(ang)*len); ctx.stroke();
+      }
+      const nC=Math.floor(30*ph.f);
+      for (let i=0;i<nC;i++) { ctx.fillStyle='rgba(232,168,50,.82)'; ctx.beginPath(); ctx.arc(cx+(rng(i*13+pi*51,sd)-.5)*R*1.6,yT+bH*rng(i*13+1+pi*51,sd),1+rng(i*13+2+pi*51,sd)*1.9,0,Math.PI*2); ctx.fill(); }
+    } else if (sub==='carbide') {
+      const nC=Math.floor(25*ph.f);
+      for (let i=0;i<nC;i++) { ctx.fillStyle='rgba(232,168,50,.75)'; ctx.beginPath(); ctx.arc(cx+(rng(i*17+pi*61,sd)-.5)*R*1.7,yT+bH*rng(i*17+1+pi*61,sd),1+rng(i*17+2+pi*61,sd)*2.2,0,Math.PI*2); ctx.fill(); }
+    } else if (sub==='retained'||ph.n.includes('γ')||ph.n.includes('Austenite')) {
+      ctx.fillStyle='rgba(18,50,32,.72)'; ctx.fillRect(cx-R,yT,R*2,bH);
+      for (let g=0;g<3;g++) { ctx.strokeStyle='rgba(74,174,106,.42)'; ctx.lineWidth=.8; ctx.beginPath(); ctx.arc(cx+(rng(g*3+pi*71,sd)-.5)*R*1.1,yT+bH*(.2+rng(g*3+1+pi*71,sd)*.6),Math.min(R*.17,bH*.28),0,Math.PI*2); ctx.stroke(); }
+    } else if (sub==='spheroidite') {
+      const nc=Math.floor(28*ph.f);
+      for (let i=0;i<nc;i++) { const bx=cx+(rng(i*17+pi*71,sd)-.5)*R*1.7,by=yT+bH*rng(i*17+1+pi*71,sd),br=R*(.05+rng(i*17+2+pi*71,sd)*.08); ctx.fillStyle='rgba(140,110,200,.85)'; ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='rgba(154,106,218,.8)'; ctx.lineWidth=.5; ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.stroke(); }
+    } else {
+      for (let g=0;g<3;g++) { const ax=cx+(rng(g*3+pi*81,sd)-.5)*R,ay=yT+bH*(.15+rng(g*3+1+pi*81,sd)*.7),ar=Math.min(R*.13,bH*.25); ctx.fillStyle='rgba(35,75,130,.28)'; ctx.beginPath(); ctx.arc(ax,ay,ar,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='rgba(74,158,218,.6)'; ctx.lineWidth=.9; ctx.beginPath(); ctx.arc(ax,ay,ar,0,Math.PI*2); ctx.stroke(); }
+    }
+    // Phase band divider
+    if (pi < phases.length - 1 && ph.f > 0.04 && cumF < 0.99) {
+      const dY = Math.min(cy + R - 1, cy - R + cumF * 2 * R);
+      const hw = Math.sqrt(Math.max(0, R * R - (dY - cy) * (dY - cy)));
+      ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = .8; ctx.setLineDash([2, 3]);
+      ctx.beginPath(); ctx.moveTo(cx - hw, dY); ctx.lineTo(cx + hw, dY); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  });
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(200,210,220,.45)'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 12: MECHANICAL PROPERTIES
+   Weighted average of properties across all present phases.
+   ════════════════════════════════════════════════════════════ */
+function renderProps(phases) {
+  const c = S.c;
+  const pm = {
+    coarse_pearlite: { h: 18+c*22, s: 22+c*25, d: 76-c*20, t: 64-c*15 },
+    fine_pearlite:   { h: 40+c*35, s: 42+c*33, d: 58-c*22, t: 54-c*16 },
+    bainite:         { h: 62+c*18, s: 65+c*15, d: 24-c*8,  t: 48-c*10 },
+    martensite:      { h: 95+c*4,  s: 93+c*4,  d: 3,        t: 9 },
+    tempered:        { h: 72+c*6,  s: 83+c*5,  d: 20+c*4,   t: 55-c*8 },
+    carbide:         { h: 90,      s: 42,       d: 2,         t: 4 },
+    spheroidite:     { h: 14+c*12, s: 16+c*10,  d: 83-c*13,  t: 73-c*9 },
+    retained:        { h: 26,      s: 24,        d: 46,        t: 42 },
+    ferrite:         { h: 12+c*7,  s: 14+c*9,   d: 86-c*14,  t: 73-c*9 }
+  };
+  let H = 0, Str = 0, D = 0, T = 0;
+  phases.forEach(p => {
+    const k = p.sub || 'fine_pearlite';
+    const pp = pm[k] || pm.fine_pearlite;
+    H += p.f * pp.h; Str += p.f * pp.s; D += p.f * pp.d; T += p.f * pp.t;
+  });
+  const cl = v => Math.min(99, Math.max(4, Math.round(v)));
+  [H, Str, D, T] = [H, Str, D, T].map(cl);
+  const q = v => v >= 70 ? 'High' : v >= 38 ? 'Moderate' : 'Low';
+  document.getElementById('propsDiv').innerHTML =
+    [{ n: 'Hardness', v: H, c: '#da5a4a' }, { n: 'Strength', v: Str, c: '#e8a832' },
+     { n: 'Ductility', v: D, c: '#4aae6a' }, { n: 'Toughness', v: T, c: '#4a9eda' }]
+    .map(b => `<div class="pb"><span class="pn">${b.n}</span><div class="pbg"><div class="pf" style="width:${b.v}%;background:${b.c}"></div></div><span class="pv">${q(b.v)}</span></div>`).join('');
+}
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 13: UI CONTROLS & ANIMATION
+   ════════════════════════════════════════════════════════════ */
+function validateTR() {
+  let te = parseInt(document.getElementById('tEnd').value) || 100;
+  te = Math.max(20, Math.min(400, te)); S.tEnd = te;
+  const ms = Ms();
+  if (S.ht === 'anneal' || S.ht === 'norm') {
+    const eff = effectiveEndTemp(S.ht);
+    document.getElementById('trHint').textContent = te <= ms
+      ? `Path stops above Ms at ${eff}°C`
+      : `End ${te}°C (above Ms)`;
+    document.getElementById('trHint').style.color = te <= ms ? '#e8a832' : 'var(--tx3)';
+    return;
+  }
+  document.getElementById('trHint').textContent =
+    S.c > 0.1 ? (te > ms ? `⚠ End ${te}°C > Ms(${ms}°C) — no martensite` : `End ${te}°C ≤ Ms ✓`) : `End ${te}°C`;
+  document.getElementById('trHint').style.color = S.tEnd > Ms() && S.c > 0.1 ? '#e8a832' : 'var(--tx3)';
+}
+
+let animRAF = null;
+function runAnim() {
+  if (animRAF) cancelAnimationFrame(animRAF);
+  S.aFrac = 0; S.clicked = null;
+  let f = 0; const tot = 100;
+  const pts = pathPts();
+  const step = () => {
+    f++; S.aFrac = f / tot;
+    const idx = Math.min(Math.floor(S.aFrac * pts.length), pts.length - 1);
+    const T   = pts[idx].T;
+    const res = stateAtPathIndex(idx);
+    drawTTT(); showMicro(res.phases, T);
+    if (f < tot) animRAF = requestAnimationFrame(step);
+    else { S.aFrac = 1; render(); }
+  };
+  animRAF = requestAnimationFrame(step);
+}
+
+function setHT(h) {
+  S.ht = h;
+  ['anneal', 'norm', 'qt', 'sph'].forEach(x => document.getElementById('ht-' + x).classList.toggle('on', x === h));
+  document.getElementById('st1').textContent = { anneal: 'Annealing', norm: 'Normalizing', qt: 'Quench+Temper', sph: 'Spheroidizing' }[h];
+  document.getElementById('stT').style.display = h === 'qt' ? 'block' : 'none';
+  validateTR(); render();
+}
+function setDT(d) {
+  S.dt = d;
+  ['ttt', 'cct'].forEach(x => document.getElementById('dt-' + x).classList.toggle('on', x === d));
+  render();
+}
+function onC(v) {
+  S.c = v / 100;
+  const l = S.c < 0.25 ? 'Low' : S.c <= 0.6 ? 'Medium' : 'High';
+  document.getElementById('cLbl').textContent = `${S.c.toFixed(2)}% C — ${l}`;
+  document.getElementById('st0').textContent  = S.c.toFixed(2) + '%';
+  document.getElementById('st3').textContent  = Ta() + '°C';
+  validateTR(); render();
+}
+function onRate(v)  { S.rate  = +v; document.getElementById('rateV').textContent = v + '°C/s'; render(); }
+function onTemper(v){ S.temT  = +v; document.getElementById('temV').textContent  = v + '°C'; document.getElementById('st5').textContent = v + '°C'; render(); }
+function onTR()     { validateTR(); render(); }
+
+/* ════════════════════════════════════════════════════════════
+   SECTION 14: MAIN RENDER FUNCTION
+   Calls all drawing functions with the current state.
+   ════════════════════════════════════════════════════════════ */
+function render() {
+  const res = runStateMachine(1);
+  drawTTT();
+  drawThermal();
+  showMicro(res.phases, S.tEnd);
+  renderProps(res.phases);
+  document.getElementById('st3').textContent = Ta() + '°C';
+  document.getElementById('st2').textContent = res.summary;
+}
+
+// Initialise
+document.getElementById('cSl').value = Math.round(S.c * 100);
+document.getElementById('cLbl').textContent = `${S.c.toFixed(2)}% C — ${S.c < 0.25 ? 'Low' : S.c <= 0.6 ? 'Medium' : 'High'}`;
+validateTR();
+render();
+window.addEventListener('resize', () => render());
+</script>
+</body>
+</html>
